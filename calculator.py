@@ -40,45 +40,119 @@ To submit your homework:
 
 
 """
+default = "No Value Set"
+
+
+def page():
+    return"""
+        <html>
+        <head>
+        <title>WSGI Calculator</title>
+        </head>
+        <body>
+        <p>Modify the URL to invoke the add, subtract, multiply and divide functions</p>
+        <p>Example: http://localhost8080/divide/12/3</p>
+        </body>
+        </html>"""
 
 
 def add(*args):
     """ Returns a STRING with the sum of the arguments """
+    sum = 0
+    for arg in args:
+        try:
+            sum += int(arg)
+        except (ValueError, TypeError):
+            pass
 
-    # TODO: Fill sum with the correct value, based on the
-    # args provided.
-    sum = "0"
+    return "{}".format(sum)
 
-    return sum
 
-# TODO: Add functions for handling more arithmetic operations.
+def subtract(*args):
+    """ Returns a string with the difference of the arguments """
+    minuend, subtrahend = args
+
+    for arg in args:
+        try:
+            diff = int(minuend) - int(subtrahend)
+        except (ValueError, TypeError):
+            pass
+
+    return "{}".format(diff)
+
+
+def multiply(*args):
+    """ Returns a string with the product of the arguments """
+    product = 1
+    for arg in args:
+        try:
+            product *= int(arg)
+        except (ValueError, TypeError):
+            pass
+
+    return "{}".format(product)
+
+
+def division(*args):
+    """ Returns a string with the quotient of the arguments """
+    dividend, divisor = args
+    for arg in args:
+        try:
+            quotient = int(dividend) / int(divisor)
+        except (ValueError, TypeError):
+            pass
+
+    return "{}".format(quotient)
+
 
 def resolve_path(path):
     """
     Should return two values: a callable and an iterable of
     arguments.
     """
+    funcs = {"add": add,
+             "subtract": subtract,
+             "multiply": multiply,
+             "divide": division}
 
-    # TODO: Provide correct values for func and args. The
-    # examples provide the correct *syntax*, but you should
-    # determine the actual values of func and args using the
-    # path.
-    func = add
-    args = ['25', '32']
+    path = path.strip("/").split("/")
+    req_func = path[0]
+    args = path[1:]
+
+    try:
+        func = funcs[req_func]
+    except KeyError:
+        raise NameError
 
     return func, args
 
+
 def application(environ, start_response):
-    # TODO: Your application code from the book database
-    # work here as well! Remember that your application must
-    # invoke start_response(status, headers) and also return
-    # the body of the response in BYTE encoding.
-    #
-    # TODO (bonus): Add error handling for a user attempting
-    # to divide by zero.
-    pass
+
+    path = environ.get('PATH_INFO', None)
+
+    if path == "/":
+        status = '200 OK'
+        headers = [('Content-Type', 'text/html')]
+        start_response(status, headers)
+        return [page().encode('utf8')]
+
+    func, args = resolve_path(path)
+    body = func(*args)
+
+    response_body = ['<h1>Result: {}</h1>'.format(str(func))]
+    response_body.extend(['<p>', str(body), '</p>'])
+    response_body = '\n'.join(response_body)
+    status = '200 OK'
+
+    headers = [('Content-Type', 'text/html'),
+               ('Content-Length', str(len(response_body)))]
+    start_response(status, headers)
+
+    return [response_body.encode('utf8')]
+
 
 if __name__ == '__main__':
-    # TODO: Insert the same boilerplate wsgiref simple
-    # server creation that you used in the book database.
-    pass
+    from wsgiref.simple_server import make_server
+    srv = make_server('localhost', 8080, application)
+    srv.serve_forever()
